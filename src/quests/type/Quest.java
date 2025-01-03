@@ -16,9 +16,9 @@ public class Quest extends UnlockableContent{
         super(name);
 
         hideDetails = false;
-        this.localizedName = Core.bundle.get("focus." + this.name + ".name", this.name);
-        this.description = Core.bundle.get("focus." + this.name + ".description");
-        this.details = Core.bundle.getOrNull("focus." + this.name + ".details");
+        this.localizedName = Core.bundle.get("quests." + this.name + ".name", this.name);
+        this.description = Core.bundle.get("quests." + this.name + ".description");
+        this.details = Core.bundle.getOrNull("quests." + this.name + ".details");
     }
 
     public void reward(ItemStack[] stack){

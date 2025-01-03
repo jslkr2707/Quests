@@ -1,11 +1,11 @@
 {
-  "name": "focus-lib",
-  "short": "focus-lib",
-  "displayName": "Focus System Library",
+  "name": "quests",
+  "short": "quests",
+  "displayName": "Quest Library",
   "author": "jslkr2707",
   "version": "0.1",
-  "main": "focus.FocusLib",
-  "minGameVersion": "144",
+  "main": "quests.Quests",
+  "minGameVersion": "146",
   "dependencies": [],
   "hidden": false
 }

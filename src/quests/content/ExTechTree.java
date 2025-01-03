@@ -12,7 +12,7 @@ public class ExTechTree {
     static TechTree.TechNode context = null;
 
     public static void load() {
-        nodeRoot("asdf", example, () -> {
+        ExPlanets.exam.techTree = nodeRoot("asdf", example, () -> {
             node(intermediate, () -> {});
             node(advanced, Seq.with(new sectorsCompleted(1), new focusResearch(intermediate)), () -> {});
         });

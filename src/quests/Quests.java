@@ -17,14 +17,16 @@ public class Quests extends Mod{
 
     @Override
     public void init(){
-        Mods.LoadedMod mod = mods.locateMod("focus-lib");
+        super.init();
+
+        Mods.LoadedMod mod = mods.locateMod("quests");
 
         if(!headless){
             //credits to BM and PU
             Func<String, String> stringf = value -> Core.bundle.get("mod." + value);
 
             mod.meta.displayName = stringf.get(mod.meta.name + ".name");
-            mod.meta.description = Core.bundle.get("mod.focus-lib.description");
+            mod.meta.description = Core.bundle.get("mod.quests.description");
 
             mod.meta.author = "[royal]" + mod.meta.author + "[]";
         }
@@ -39,6 +41,7 @@ public class Quests extends Mod{
 
     @Override
     public void loadContent(){
+        ExPlanets.load();
         ExFocus.load();
         ExTechTree.load();
     }

@@ -51,6 +51,9 @@ public class QuestDialog extends BaseDialog{
     public QuestDisplay questDisplay;
     public View view;
     public Quest current;
+
+    //to avoid vanilla planets
+    public String questPlanet;
     public int currentSectors = -1;
     /* put a sound file in the "sounds/" directory */
     public Sound researchSound = Vars.tree.loadSound("research");
@@ -61,34 +64,77 @@ public class QuestDialog extends BaseDialog{
     public QuestDialog(String name){
         super("name");
 
+
         current = all(Core.settings.getString("current", null));
+        questPlanet = Core.settings.getString("planet", null);
         currentSectors = Core.settings.getInt("sectors", -1);
 
         titleTable.remove();
         titleTable.clear();
-        titleTable.top().right();
-        titleTable.button(Core.bundle.get("focus.stop"), () -> {
+        titleTable.top();
+        titleTable.button((b) -> {
+            b.imageDraw(() -> {
+                return this.root.node.icon();
+            }).padRight(8.0F).size(32.0F);
+            b.add().growX();
+            b.label(() -> {
+                return this.root.node.localizedName();
+            }).color(Pal.accent);
+            b.add().growX();
+            b.add().size(32.0F);
+            b.center().top();
+        }, () -> {
+            new BaseDialog("@quest.select"){{
+                cont.pane(t -> {
+                    t.table(Tex.button, in -> {
+                        in.defaults().width(300f).height(60f);
+                        for(TechNode node : TechTree.roots){
+                            if (node.requiresUnlock  && node != ui.research.getPrefRoot()) continue;
+                            if (!(node.content instanceof Quest)) continue;
+
+                            //TODO toggle
+                            in.button(node.localizedName(), node.icon(), Styles.flatTogglet, iconMed, () -> {
+                                if(node == lastNode){
+                                    return;
+                                }
+
+                                rebuildTree(node);
+                                hide();
+                            }).marginLeft(12f).checked(node == lastNode).row();
+                        }
+                    });
+                });
+
+                addCloseButton();
+            }}.show();
+        }).visible(() -> {
+            return this.showTechSelect = TechTree.roots.count((node) -> {
+                return !node.requiresUnlock || node.content.unlocked();
+            }) > 1;
+        }).minWidth(300.0F).center().top().maxWidth(300.0f);
+
+        titleTable.button(Core.bundle.get("quests.stop"), () -> {
             new BaseDialog(""){{
                 cont.pane(t -> {
                     t.table(button, a -> {
                         a.margin(20f);
-                        a.add("@focus.stop.ask");
+                        a.add("@quests.stop.ask");
                     }).padBottom(10f).center();
 
                     t.row();
 
 
-                    t.button("@focus.stop.yes", () -> {
+                    t.button("@quests.stop.yes", () -> {
                         current = null;
                         Core.settings.remove("current");
                         questDisplay.rebuild(null);
                         hide();
                     });
 
-                    t.button("@focus.stop.no", this::hide).padLeft(20f);
+                    t.button("@quests.stop.no", this::hide).padLeft(20f);
                 }).center();
             }}.show();
-        }).top().right().fillX().minWidth(200f).touchable(() -> current == null ? Touchable.disabled : Touchable.enabled);
+        }).top().right().fillX().minWidth(200f).maxWidth(300f).touchable(() -> current == null ? Touchable.disabled : Touchable.enabled);
 
         showTechSelect = true;
 
@@ -115,12 +161,12 @@ public class QuestDialog extends BaseDialog{
             checkMargin.run();
             Core.app.post(checkMargin);
 
-            Planet currPlanet = ui.planet.isShown() ?
-                    ui.planet.state.planet :
-                    state.isCampaign() ? state.rules.sector.planet : null;
+            Planet currPlanet = questPlanet != null ? content.planet(questPlanet) : QuestSetting.getFirstPlanet();
 
             if(currPlanet != null && currPlanet.techTree != null){
-                switchTree(TechTree.roots.get(2));
+                this.switchTree(currPlanet.techTree);
+                questPlanet = currPlanet.name;
+                Core.settings.put("planet", questPlanet);
             }
 
             items = items();
@@ -210,7 +256,7 @@ public class QuestDialog extends BaseDialog{
     }
 
     void treeLayout(){
-        float spacing = 50f;
+        float spacing = 100f;
         LayoutNode node = new LayoutNode(root, null);
         LayoutNode[] children = node.children;
         LayoutNode[] leftHalf = Arrays.copyOfRange(node.children, 0, Mathf.ceil(node.children.length/2f));
@@ -356,7 +402,7 @@ public class QuestDialog extends BaseDialog{
         LayoutNode(TechTreeNode node, LayoutNode parent){
             this.node = node;
             this.parent = parent;
-            this.width = this.height = QuestSetting.nodeSize(node.node);
+            this.width = this.height = ui.research.nodeSize;
             if(node.children != null){
                 children = Seq.with(node.children).map(t -> new LayoutNode(t, this)).toArray(LayoutNode.class);
             }
@@ -370,7 +416,7 @@ public class QuestDialog extends BaseDialog{
         public TechTreeNode(TechNode node, TechTreeNode parent){
             this.node = node;
             this.parent = parent;
-            this.width = this.height = QuestSetting.nodeSize(node);
+            this.width = this.height = ui.research.nodeSize;
             nodes.add(this);
             if(node.children != null){
                 children = new TechTreeNode[node.children.size];
@@ -645,7 +691,7 @@ public class QuestDialog extends BaseDialog{
                     desc.row();
 
                     if (node.content == current){
-                        desc.add(Core.bundle.format("focus.researching")).color(Color.red);
+                        desc.add(Core.bundle.format("quests.researching")).color(Color.red);
                         desc.row();
                     }
 
@@ -760,7 +806,7 @@ public class QuestDialog extends BaseDialog{
                         t.table(b -> {
                             b.left();
                             if (node.parent != null) {
-                                b.add(Core.bundle.format("focus.prerequisite")).color(Color.orange).left();
+                                b.add(Core.bundle.format("quests.prerequisite")).color(Color.orange).left();
                                 b.row();
                                 b.table(p -> {
                                     p.marginLeft(9f).left();
@@ -783,7 +829,7 @@ public class QuestDialog extends BaseDialog{
                                     }
                                 }
                             } else {
-                                b.add(Core.bundle.format("focus.nonerequired")).color(Color.red).left();
+                                b.add(Core.bundle.format("quests.nonerequired")).color(Color.red).left();
                                 b.row();
                             }
                         }).left();
@@ -795,13 +841,13 @@ public class QuestDialog extends BaseDialog{
                             b.margin(3f).left().defaults().left();
                             ItemStack[] rew = ((Quest) node.content).rewards;
 
-                            b.add(Core.bundle.format("focus.reward")).color(Color.lime);
+                            b.add(Core.bundle.format("quests.reward")).color(Color.lime);
                             for (ItemStack i : rew) {
                                 b.row();
                                 b.table(re -> {
                                     re.left().margin(4f).marginLeft(9f);
                                     re.image(i.item.uiIcon).size(20f).left().padRight(6f);
-                                    re.add(Core.bundle.format("focus.rewards", i.item.localizedName, i.amount)).color(Color.white);
+                                    re.add(Core.bundle.format("quests.rewards", i.item.localizedName, i.amount)).color(Color.white);
                                 }).left();
                             }
                         }).margin(9f).left();
@@ -813,14 +859,14 @@ public class QuestDialog extends BaseDialog{
                         infoTable.table(r -> {
                             r.margin(3f).left().defaults().left();
 
-                            r.add(Core.bundle.format("focus.additional")).color(Pal.accent);
+                            r.add(Core.bundle.format("quests.additional")).color(Pal.accent);
                             r.row();
                             for (UnlockableContent c : ((Quest) node.content).unlockContents) {
                                 r.table(u -> {
-                                    u.left().marginLeft(9f);
+                                    u.left().margin(3f).marginLeft(9f);
                                     u.image(c.uiIcon).size(20f).left().padRight(6f);
                                     u.add(c.localizedName).color(Color.white).left();
-                                }).left();
+                                }).left().pad(3f);
                                 r.row();
                             }
                         }).margin(9f).left();
@@ -829,11 +875,11 @@ public class QuestDialog extends BaseDialog{
             } else {
                 infoTable.table(tbl -> {
                     tbl.margin(3f).left().defaults().left();
-                    tbl.add(Core.bundle.format("focus.untilcomplete"));
+                    tbl.add(Core.bundle.format("quests.untilcomplete"));
                     tbl.row();
                     tbl.table(ad -> {
                         ad.margin(3f).left().marginLeft(9f);
-                        ad.add(Core.bundle.format("focus.moresectors", completed() - currentSectors, ((Quest)node.content).addSectors, reqComplete(node) ? "green" : "red")).color(Color.white);
+                        ad.add(Core.bundle.format("quests.moresectors", completed() - currentSectors, ((Quest)node.content).addSectors, reqComplete(node) ? "green" : "red")).color(Color.white);
                     }).marginLeft(9f).left();
                 }).margin(9f).left();
             }
