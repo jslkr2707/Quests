@@ -49,6 +49,7 @@ public class QuestDialog extends BaseDialog{
     public Rect bounds = new Rect();
     public ItemsDisplay itemDisplay;
     public QuestDisplay questDisplay;
+    public Table abortDisplay;
     public View view;
     public Quest current;
 
@@ -72,6 +73,37 @@ public class QuestDialog extends BaseDialog{
         titleTable.remove();
         titleTable.clear();
         titleTable.top();
+
+        titleTable.button((b) -> {
+            b.label(() -> {
+                return Core.bundle.get("quests.stop");
+            });
+        }, () -> {
+            new BaseDialog(""){{
+                cont.table( t -> {
+                    t.table(button, a -> {
+                        a.margin(20f);
+                        a.add("@quests.stop.ask");
+                    }).padBottom(10f).center().top();
+
+                    t.row();
+
+                    t.table(Styles.none, b -> {
+                        b.button("@quests.stop.yes", () -> {
+                            current = null;
+                            Core.settings.remove("current");
+                            questDisplay.rebuild(null);
+                            hide();
+                        }).bottom();
+
+                        b.button("@quests.stop.no", this::hide).bottom().padLeft(20f);
+                    }).center();
+
+                    t.row();
+                }).center();
+            }}.show();
+        }).right().maxWidth(300f).touchable(() -> current == null ? Touchable.disabled : Touchable.enabled);
+
         titleTable.button((b) -> {
             b.imageDraw(() -> {
                 return this.root.node.icon();
@@ -82,7 +114,7 @@ public class QuestDialog extends BaseDialog{
             }).color(Pal.accent);
             b.add().growX();
             b.add().size(32.0F);
-            b.center().top();
+            b.center();
         }, () -> {
             new BaseDialog("@quest.select"){{
                 cont.pane(t -> {
@@ -107,34 +139,12 @@ public class QuestDialog extends BaseDialog{
 
                 addCloseButton();
             }}.show();
+            center();
         }).visible(() -> {
             return this.showTechSelect = TechTree.roots.count((node) -> {
                 return !node.requiresUnlock || node.content.unlocked();
             }) > 1;
-        }).minWidth(300.0F).center().top().maxWidth(300.0f);
-
-        titleTable.button(Core.bundle.get("quests.stop"), () -> {
-            new BaseDialog(""){{
-                cont.pane(t -> {
-                    t.table(button, a -> {
-                        a.margin(20f);
-                        a.add("@quests.stop.ask");
-                    }).padBottom(10f).center();
-
-                    t.row();
-
-
-                    t.button("@quests.stop.yes", () -> {
-                        current = null;
-                        Core.settings.remove("current");
-                        questDisplay.rebuild(null);
-                        hide();
-                    });
-
-                    t.button("@quests.stop.no", this::hide).padLeft(20f);
-                }).center();
-            }}.show();
-        }).top().right().fillX().minWidth(200f).maxWidth(300f).touchable(() -> current == null ? Touchable.disabled : Touchable.enabled);
+        }).minWidth(300.0F).maxWidth(300.0f).center();
 
         showTechSelect = true;
 
@@ -605,7 +615,6 @@ public class QuestDialog extends BaseDialog{
                 }
             } else if (reqComplete(node)){
                 unlock(node);
-                Log.info(node.localizedName() + "unlock");
                 items = items();
                 current = null;
                 delCurrent();
@@ -623,6 +632,7 @@ public class QuestDialog extends BaseDialog{
 
         void unlock(TechNode node){
             node.content.unlock();
+            Log.info(node.localizedName() + "unlock");
 
             //unlock parent nodes in multiplayer.
             TechNode parent = node.parent;
