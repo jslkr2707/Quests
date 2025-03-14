@@ -54,10 +54,10 @@ public class QObjectives {
         }
     }
 
-    public static class focusResearch implements Objective {
+    public static class questResearch implements Objective {
         public Quest[] prerequisite;
 
-        public focusResearch(Quest... quest) { this.prerequisite = quest; }
+        public questResearch(Quest... quest) { this.prerequisite = quest; }
 
         @Override
         public boolean complete() {

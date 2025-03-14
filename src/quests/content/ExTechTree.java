@@ -14,7 +14,7 @@ public class ExTechTree {
     public static void load() {
         ExPlanets.exam.techTree = nodeRoot("asdf", example, () -> {
             node(intermediate, () -> {});
-            node(advanced, Seq.with(new sectorsCompleted(1), new focusResearch(intermediate)), () -> {});
+            node(advanced, Seq.with(new sectorsCompleted(1), new questResearch(intermediate)), () -> {});
         });
     }
 }

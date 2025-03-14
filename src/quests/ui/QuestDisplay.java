@@ -27,5 +27,4 @@ public class QuestDisplay extends Table {
             t.add(f == null ? Core.bundle.get("quests.none") : f.localizedName).scaling(Scaling.bounded);
         }).center().padTop(10f).size(200f, 150f);
     }
-
 }

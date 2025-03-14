@@ -10,7 +10,7 @@ import mindustry.mod.*;
 import static mindustry.Vars.*;
 
 public class Quests extends Mod{
-    public static FocusUILoader fui = new FocusUILoader();
+    public static QuestUILoader fui = new QuestUILoader();
 
     public Quests(){
     }

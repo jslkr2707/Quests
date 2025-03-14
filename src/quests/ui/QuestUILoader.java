@@ -4,7 +4,7 @@ import arc.scene.style.*;
 
 import static arc.Core.atlas;
 
-public class FocusUILoader {
+public class QuestUILoader {
     public static Drawable buttonGreen;
 
     public void init(){

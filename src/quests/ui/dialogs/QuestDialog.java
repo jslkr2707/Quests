@@ -65,7 +65,6 @@ public class QuestDialog extends BaseDialog{
     public QuestDialog(String name){
         super("name");
 
-
         current = all(Core.settings.getString("current", null));
         questPlanet = Core.settings.getString("planet", null);
         currentSectors = Core.settings.getInt("sectors", -1);
@@ -74,35 +73,7 @@ public class QuestDialog extends BaseDialog{
         titleTable.clear();
         titleTable.top();
 
-        titleTable.button((b) -> {
-            b.label(() -> {
-                return Core.bundle.get("quests.stop");
-            });
-        }, () -> {
-            new BaseDialog(""){{
-                cont.table( t -> {
-                    t.table(button, a -> {
-                        a.margin(20f);
-                        a.add("@quests.stop.ask");
-                    }).padBottom(10f).center().top();
-
-                    t.row();
-
-                    t.table(Styles.none, b -> {
-                        b.button("@quests.stop.yes", () -> {
-                            current = null;
-                            Core.settings.remove("current");
-                            questDisplay.rebuild(null);
-                            hide();
-                        }).bottom();
-
-                        b.button("@quests.stop.no", this::hide).bottom().padLeft(20f);
-                    }).center();
-
-                    t.row();
-                }).center();
-            }}.show();
-        }).right().maxWidth(300f).touchable(() -> current == null ? Touchable.disabled : Touchable.enabled);
+        showTechSelect = true;
 
         titleTable.button((b) -> {
             b.imageDraw(() -> {
@@ -139,17 +110,50 @@ public class QuestDialog extends BaseDialog{
 
                 addCloseButton();
             }}.show();
-            center();
         }).visible(() -> {
             return this.showTechSelect = TechTree.roots.count((node) -> {
                 return !node.requiresUnlock || node.content.unlocked();
             }) > 1;
-        }).minWidth(300.0F).maxWidth(300.0f).center();
-
-        showTechSelect = true;
+        });
 
         margin(0f).marginBottom(8);
-        cont.stack(titleTable, view = new View(), itemDisplay = new ItemsDisplay(), questDisplay = new QuestDisplay()).grow();
+
+        abortDisplay = new Table(c -> {
+            top().right();
+
+            c.button((b) -> {
+                b.label(() -> {
+                    return Core.bundle.get("quests.stop");
+                });
+            }, () -> {
+                new BaseDialog(""){{
+                    cont.table( t -> {
+                        t.table(button, a -> {
+                            a.margin(20f);
+                            a.add("@quests.stop.ask");
+                        }).padBottom(10f).center().top();
+
+                        t.row();
+
+                        t.table(Styles.none, b -> {
+                            b.button("@quests.stop.yes", () -> {
+                                current = null;
+                                Core.settings.remove("current");
+                                questDisplay.rebuild(null);
+                                hide();
+                            }).bottom();
+
+                            b.button("@quests.stop.no", this::hide).bottom().padLeft(20f);
+                        }).center();
+
+                        t.row();
+                    }).center();
+                }}.show();
+            }).maxWidth(300f).touchable(() -> current == null ? Touchable.disabled : Touchable.enabled);
+        }).top().right();
+
+        cont.stack(titleTable, view = new View(), itemDisplay = new ItemsDisplay(), questDisplay = new QuestDisplay(),
+                abortDisplay).grow();
 
         titleTable.toFront();
 
@@ -265,6 +269,82 @@ public class QuestDialog extends BaseDialog{
         treeLayout();
     }
 
+    void addSelect(){
+        titleTable.button((b) -> {
+            b.imageDraw(() -> {
+                return this.root.node.icon();
+            }).padRight(8.0F).size(32.0F);
+            b.add().growX();
+            b.label(() -> {
+                return this.root.node.localizedName();
+            }).color(Pal.accent);
+            b.add().growX();
+            b.add().size(32.0F);
+            b.center();
+        }, () -> {
+            new BaseDialog("@quest.select"){{
+                cont.pane(t -> {
+                    t.table(Tex.button, in -> {
+                        in.defaults().width(300f).height(60f);
+                        for(TechNode node : TechTree.roots){
+                            if (node.requiresUnlock  && node != ui.research.getPrefRoot()) continue;
+                            if (!(node.content instanceof Quest)) continue;
+
+                            //TODO toggle
+                            in.button(node.localizedName(), node.icon(), Styles.flatTogglet, iconMed, () -> {
+                                if(node == lastNode){
+                                    return;
+                                }
+
+                                rebuildTree(node);
+                                hide();
+                            }).marginLeft(12f).checked(node == lastNode).row();
+                        }
+                    });
+                });
+
+                addCloseButton();
+            }}.show();
+            center();
+        }).visible(() -> {
+            return this.showTechSelect = TechTree.roots.count((node) -> {
+                return !node.requiresUnlock || node.content.unlocked();
+            }) > 1;
+        }).center();
+    }
+
+    void addAbort(){
+        titleTable.button((b) -> {
+            b.label(() -> {
+                return Core.bundle.get("quests.stop");
+            });
+        }, () -> {
+            new BaseDialog(""){{
+                cont.table( t -> {
+                    t.table(button, a -> {
+                        a.margin(20f);
+                        a.add("@quests.stop.ask");
+                    }).padBottom(10f).center().top();
+
+                    t.row();
+
+                    t.table(Styles.none, b -> {
+                        b.button("@quests.stop.yes", () -> {
+                            current = null;
+                            Core.settings.remove("current");
+                            questDisplay.rebuild(null);
+                            hide();
+                        }).bottom();
+
+                        b.button("@quests.stop.no", this::hide).bottom().padLeft(20f);
+                    }).center();
+
+                    t.row();
+                }).center();
+            }}.show();
+        }).bottom().right().maxWidth(300f).touchable(() -> current == null ? Touchable.disabled : Touchable.enabled).expandX();
+    }
+
     void treeLayout(){
         float spacing = 100f;
         LayoutNode node = new LayoutNode(root, null);
@@ -371,7 +451,7 @@ public class QuestDialog extends BaseDialog{
             }
 
             {
-                for (Quest quest : view.completedFocus()) {
+                for (Quest quest : view.completedQuests()) {
                     if (quest != null) {
                         for (ItemStack stack : quest.rewards) {
                             values[stack.item.id] += stack.amount;
@@ -457,11 +537,11 @@ public class QuestDialog extends BaseDialog{
             Core.settings.remove("sectors");
         }
 
-        public Quest[] completedFocus(){
-            Seq<Content> focusList = content.getBy(ContentType.typeid_UNUSED).select(c -> c instanceof Quest);
-            Quest[] arr = new Quest[focusList.size];
-            for (int i = 0;i < focusList.size; i++){
-                if (((Quest)focusList.get(i)).unlocked()) arr[i] = (Quest)focusList.get(i);
+        public Quest[] completedQuests(){
+            Seq<Content> questList = content.getBy(ContentType.typeid_UNUSED).select(c -> c instanceof Quest);
+            Quest[] arr = new Quest[questList.size];
+            for (int i = 0; i < questList.size; i++){
+                if (((Quest) questList.get(i)).unlocked()) arr[i] = (Quest) questList.get(i);
             }
             return arr;
         }
@@ -475,6 +555,7 @@ public class QuestDialog extends BaseDialog{
             hoverNode = null;
             infoTable.clear();
             infoTable.touchable = Touchable.enabled;
+
 
             current = all(Core.settings.getString("current", null));
             currentSectors = Core.settings.getInt("sectors", -1);
@@ -529,7 +610,7 @@ public class QuestDialog extends BaseDialog{
                     float offset = (Core.graphics.getHeight() % 2) / 2f;
                     button.setPosition(node.x + panX + width / 2f, node.y + panY + height / 2f + offset, Align.center);
                     button.getStyle().up = !locked(node.node) ? Tex.buttonOver : !selectable(node.node) || !canSpend(node.node) ? Tex.buttonRed
-                            : current == null ? Tex.button : node.node.content == current ? FocusUILoader.buttonGreen : Tex.button;
+                            : current == null ? Tex.button : node.node.content == current ? QuestUILoader.buttonGreen : Tex.button;
                     ((TextureRegionDrawable)button.getStyle().imageUp).setRegion(node.node.content.fullIcon);
                     button.getImage().setColor(!locked(node.node) ? Color.white : node.selectable ? Color.gray : Pal.gray);
                     button.getImage().setScaling(Scaling.bounded);
@@ -825,9 +906,9 @@ public class QuestDialog extends BaseDialog{
                                 }).left();
                                 b.row();
 
-                                Objective pre = node.objectives.find(o -> o instanceof QObjectives.focusResearch);
+                                Objective pre = node.objectives.find(o -> o instanceof QObjectives.questResearch);
                                 if (pre != null) {
-                                    Quest[] foc = ((QObjectives.focusResearch) pre).prerequisite;
+                                    Quest[] foc = ((QObjectives.questResearch) pre).prerequisite;
 
                                     for (Quest f : foc) {
                                         b.table(fo -> {
